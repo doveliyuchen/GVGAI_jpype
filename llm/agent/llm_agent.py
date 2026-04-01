@@ -19,7 +19,9 @@ class LLMPlayer:
         rotate_state: bool = False,
         expand_state: bool = False,
         log_dir: Optional[str] = None,
-        max_action_history_len: Optional[int] = 3
+        max_action_history_len: Optional[int] = 3,
+        max_retries: int = 5,
+        base_retry_wait: int = 60,
     ):
         self.model_name = model_name
         self.env = env
@@ -29,6 +31,8 @@ class LLMPlayer:
         self.rotate_state = rotate_state
         self.expand_state = expand_state
         self.max_action_history_len = max_action_history_len
+        self.max_retries = max_retries
+        self.base_retry_wait = base_retry_wait
         self.llm_client = create_client_from_config(model_name)
         self.reflection_mgr = ReflectionManager()
         self.position_history = []
@@ -57,6 +61,35 @@ class LLMPlayer:
                 optional_prompt=self.extra_prompt
             )
             self.llm_client.set_system_prompt(static_prompt)
+
+    def _default_action(self) -> Tuple[int, str]:
+        action = 0
+        return action, self.action_map.get(action, "ACTION_0")
+
+    def _query_with_retry(self, prompt: str, image_path: Optional[str] = None) -> str:
+        """Query LLM with retry on API errors/exceptions and empty responses."""
+        for attempt in range(self.max_retries):
+            try:
+                response = self.llm_client.query(prompt, image_path=image_path)
+            except Exception as exc:
+                response = f"Error: Exception during LLM query: {exc}"
+
+            self.logger.log_response(response)
+
+            if response and not response.strip().startswith("Error:") and response.strip():
+                return response
+
+            if response and response.strip().startswith("Error:"):
+                print(f"[API ERROR] Attempt {attempt + 1}/{self.max_retries}: {response.strip()}")
+            else:
+                print(f"[WARNING] Empty response from {self.model_name}.")
+
+            if attempt < self.max_retries - 1:
+                wait = self.base_retry_wait * (2 ** attempt)
+                print(f"[RETRY] Waiting {wait}s...")
+                time.sleep(wait)
+
+        return ""
 
     def select_action(
         self,
@@ -112,36 +145,12 @@ class LLMPlayer:
                 plan=plan
             )
 
-        max_retries = 5
-        base_wait = 60
-
-        for attempt in range(max_retries):
-            response = self.llm_client.query(prompt, image_path=current_image_path)
-            self.logger.log_response(response)
-
-            if response and response.strip().startswith("Error:"):
-                print(f"[API ERROR] Attempt {attempt + 1}/{max_retries}: {response.strip()}")
-                if attempt < max_retries - 1:
-                    wait = base_wait * (2 ** attempt)
-                    print(f"[RETRY] Waiting {wait}s...")
-                    time.sleep(wait)
-                    continue
-                action, action_name = 0, self.action_map.get(0, "ACTION_0")
-                break
-
-            if not response or not response.strip():
-                print(f"[WARNING] Empty response from {self.model_name}.")
-                if attempt < max_retries - 1:
-                    print(f"[RETRY] Waiting {base_wait}s...")
-                    time.sleep(base_wait)
-                    continue
-                action, action_name = 0, self.action_map.get(0, "ACTION_0")
-                break
-
+        action, action_name = self._default_action()
+        response = self._query_with_retry(prompt, image_path=current_image_path)
+        if response:
             action, action_name = parse_action_from_response(response, self.action_map)
             print(f"Response: {response}")
             print(f"Action: {action} ({action_name})")
-            break
 
         self.action_history.append(action)
         self.last_state = current_state
@@ -197,13 +206,14 @@ class LLMPlanner:
         self,
         image_path: Optional[str] = None,
         current_state: Optional[str] = '',
-        action_history: Optional[int] = None,
+        action_history: Optional[str] = None,
         current_position: Optional[Tuple[int, int]] = None,
         sprite_mapping: Optional[dict] = None,
         prompt: Optional[str] = ''
     ) -> str:
+        state_text = current_state or ""
         prev_state = self.state_history[-1] if self.state_history else 'None'
-        self.state_history.append(current_state)
+        self.state_history.append(state_text)
 
         base_prompt = (
             "Generate ABSTRACT OBJECTIVE-ORIENTED strategies using this framework:\n"
@@ -227,11 +237,11 @@ class LLMPlanner:
             "Example: **door strategy: Collect keys to bypass gate** \n If you recieved a BAD feedback, you MUST revise your strategy."
         )
 
-        sprite_lines = [f"{k} -> '{v}'" for k, v in sprite_mapping.items()]
+        sprite_lines = [f"{k} -> '{v}'" for k, v in (sprite_mapping or {}).items()]
         full_prompt = (
             "=== Sprite Mapping ===\n" + "\n".join(sprite_lines) + '\n' +
             '\n======Previous State=======\n' + prev_state + '\n' +
-            '\n=======Current State========\n' + current_state +
+            '\n=======Current State========\n' + state_text +
             (
                 '\n======Current Location=======\n'
                 f"Avatar 'a' at (row = {current_position[0]}, col = {current_position[1]})\n"

@@ -7,11 +7,11 @@ from pathlib import Path
 import gymnasium as gym
 
 # Determine the project root directory.
-# Assuming vgdl_utils.py is in GVGAI_LLM/project/llm/utils/
+# Assuming vgdl_utils.py is in <repo_root>/llm/utils/
 # Path(__file__) is the path to this file.
 # .resolve() makes it absolute.
 # .parent moves up one directory.
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 GVGAI_GAMES_BASE_DIR = PROJECT_ROOT / "gym_gvgai" / "envs" / "games"
 
 def parse_env_name(env_name: str) -> Tuple[str, str]:

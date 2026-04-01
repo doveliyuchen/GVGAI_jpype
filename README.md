@@ -19,23 +19,43 @@ For more details about the original competition rules, rankings, and related res
 ---
 
 
-## Installation
+## Installation (New)
 
-### Option 1: Using Docker
-Follow the step-by-step [guidelines](https://github.com/SUSTechGameAI/GVGAI_GYM/blob/master/docs/Guidelines-Docker-GVGAI-RLbaselines.md) to set up the framework with Docker (GPU or CPU support).
+This project now uses **JPype + modern Python/Java versions**. The old Docker/JDK9 installation flow has been removed.
 
-### Option 2: Manual Setup
-1. Clone this repository to your local machine.
-2. Install dependencies using `pip install -e <package-location>`.
-3. Install a Java compiler (e.g., `sudo apt install openjdk-9-jdk-headless`).
+### 1) Create environment from `environment.yml`
+
+```bash
+conda env create -f environment.yml
+conda activate gvgai_jpype
+```
+
+### 2) Install this package in editable mode
+
+```bash
+pip install -e .
+```
+
+`setup.py` will compile the Java sources during install/develop.
 
 ---
 
-## Requirements
+## Environment Requirements
 
-- **Anaconda**: Version published after 2019.10 is recommended.
-- **Java**: JDK 9 is recommended.
-- **Python**: Python 3 (3.7 or 3.8 recommended). **Python 2 is not supported.**
+- **OS**: Windows / Linux / macOS (with Conda support)
+- **Conda**: Miniconda or Anaconda
+- **Python**: 3.11
+- **Java**: OpenJDK 17
+- **Core dependencies**:
+  - gymnasium
+  - JPype1
+  - numpy / pillow / matplotlib
+  - openai / anthropic / google-generativeai
+  - pandas / flask / tqdm
+
+All exact dependency definitions are maintained in:
+- `environment.yml`
+- `requirements.txt`
 
 ---
 

@@ -1,12 +1,9 @@
 import os
-import json
-import pandas as pd
 import gym_gvgai as gvgai
 from datetime import datetime
 import argparse
 import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from functools import partial
 from pathlib import Path
 import gc
 import psutil
@@ -206,7 +203,7 @@ def run_single_game_task(env_name_full: str, mode: str, model_name_full: str, re
 
         # Reset environment with error handling
         try:
-            state = _env_reset(env)
+            _ = _env_reset(env)
         except Exception as e:
             raise RuntimeError(f"Environment reset failed for {env_name_full}: {e}")
         
@@ -244,7 +241,7 @@ def run_single_game_task(env_name_full: str, mode: str, model_name_full: str, re
         
         # Reset environment again for clean start
         try:
-            current_observation_pixels = _env_reset(env)
+            _ = _env_reset(env)
             if gif_saver:
                 gif_saver(env)
         except Exception as e:
@@ -418,7 +415,6 @@ def generate_tasks_prioritized(game_list_to_process, models, modes, num_runs, ba
             levels_to_process = []
             game_dir_name = f"{game_base_name_for_level_iteration}_v{game_version_for_level_iteration}"
 
-            script_dir = Path(__file__).parent
             possible_game_paths = [
                 Path(f"../gym_gvgai/envs/games/{game_dir_name}"),
                 Path(f"gym_gvgai/envs/games/{game_dir_name}"),
@@ -505,8 +501,6 @@ def main():
     parser.add_argument('--force_rerun', action='store_true', help='Force rerun existing tasks')
     parser.add_argument('--reverse', action='store_true', help='Process games in reverse order')
     parser.add_argument('--resume_game', type=str, default=None, help='Resume from specific game')
-    parser.add_argument('--specific_level', type=int, default=None, help='Process only specific level')
-
     args = parser.parse_args()
 
     # Reduce max_workers if system has limited resources
@@ -521,7 +515,7 @@ def main():
     
     try:
         script_dir = Path(__file__).parent
-        dotenv_path = script_dir.parent / '.env'
+        dotenv_path = script_dir / '.env'
         if dotenv_path.exists():
             load_dotenv(dotenv_path=str(dotenv_path))
             print(f"Loaded .env file from: {dotenv_path.resolve()}")
@@ -652,7 +646,6 @@ def main():
                     failed_task_info = f"{task['env_name_full']}, {task['model_name_full']}, {task['mode']}, run_{task['requested_run_id']}"
                     failed_tasks.append(failed_task_info)
                     print(f"[{completed_count}/{total_tasks}] !!! Task failed: {failed_task_info} - {type(e).__name__}: {e} !!!")
-                    import traceback
                     traceback.print_exc()
                     
     except KeyboardInterrupt:

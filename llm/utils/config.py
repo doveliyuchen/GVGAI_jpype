@@ -17,7 +17,7 @@ def load_llm_config(path: str = None) -> dict:
         if env_path:
             full_path = Path(env_path)
         else:
-            current_file_dir = Path(__file__).parent  # project/llm/utils/
+            current_file_dir = Path(__file__).parent  # <repo_root>/llm/utils/
             full_path = current_file_dir.parent.parent / "llm_config.json"
 
     if not full_path.exists():

@@ -3,7 +3,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from llm.utils.config import get_profile_config
 
-load_dotenv(dotenv_path=Path(__file__).parent.parent.parent / ".env")
+load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
+
 from llm.visual.ollama_client import OllamaClient
 from llm.visual.claude_client import ClaudeClient
 from llm.visual.openai_compat import (
